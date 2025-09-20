@@ -1,0 +1,9 @@
+fastapi
+uvicorn[standard]
+pypdf
+python-multipart
+mistralai
+pymupdf
+numpy
+python-dotenv
+faiss-cpu
