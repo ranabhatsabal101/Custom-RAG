@@ -177,5 +177,42 @@ def insert_chunks(doc_id, chunks):
 def get_total_chunks():
     with _connect() as con:
         return con.execute("SELECT COUNT(*) FROM chunk_meta").fetchone()[0]
+    
+def match_fts_query(fts_query, top_k):
+    print(fts_query)
+    with _connect() as con:
+        cur = con.execute(
+            "SELECT rowid, bm25(chunk_fts) AS s "
+            "FROM chunk_fts WHERE chunk_fts MATCH ? "
+            "ORDER BY s LIMIT ?",
+            (fts_query, int(top_k))
+        )
+        res = [(int(r[0]), float(r[1])) for r in cur.fetchall()] 
+        return res
+    
+def get_chunk_meta(ids):
+    res = []
+    with _connect() as con:
+        cur = con.execute(
+            f""" SELECT m.id, m.document_id, m.page_num, m.start_char, m.end_char,
+            d.original_name, t.text
+            FROM chunk_meta m
+            JOIN documents d ON d.id = m.document_id
+            JOIN chunk_fts t  ON t.rowid = m.id
+            WHERE m.id IN ({ids})"""
+        )
+        for r in cur:
+            res.append({
+                "chunk_id": r[0],
+                "document_id": r[1],
+                "page_num": r[2],
+                "start_char": r[3],
+                "end_char": r[4],
+                "document_name": r[5],
+                "text": r[6],
+            })
+        return res
+
+
 
 

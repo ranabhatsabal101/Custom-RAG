@@ -7,8 +7,8 @@ import os
 class Embedder(Protocol):
     def embed(self, texts: List[str]) -> np.ndarray: ...
 
-class MistralSDKEmbedder:
-    def __init__(self, model: str | None = None, batch_size: int = 256):
+class MistralEmbedder:
+    def __init__(self, model: str | None = None, batch_size: int = 128):
         api_key = os.getenv("MISTRAL_API_KEY")
         if not api_key:
             raise RuntimeError("MISTRAL_API_KEY not set; cannot use Mistral embeddings.")
@@ -33,4 +33,4 @@ class MistralSDKEmbedder:
     
 
 def get_embedder(model = None) -> Embedder:
-    return MistralSDKEmbedder(model)
+    return MistralEmbedder(model)

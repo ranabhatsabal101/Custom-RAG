@@ -31,7 +31,6 @@ async def ingest_pdf_documents(files: List[UploadFile] = File(..., description="
     
     for f in files:
         if f.content_type not in {"application/pdf", "application/x-pdf", "application/acrobat"} and not f.filename.lower().endswith(".pdf"):
-            print("Reached here!")
             results.append(IngestResult(
                 filename=f.filename,
                 stored_as="",

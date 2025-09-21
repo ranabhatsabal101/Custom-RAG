@@ -94,7 +94,6 @@ def _train_ivfpq_index_from_flat(flat_index, dim):
     index = _load_or_create_ivfpq(dim)
     _, vecs = _get_all_ids_and_vectors_from_flat_index(flat_index)
     train = _sample_training_vectors(vecs)
-    print("This is the nlist", {index.nlist})
     index.train(train)
     faiss.write_index(index, str(IVFPQ_INDEX_PATH))
     return index
