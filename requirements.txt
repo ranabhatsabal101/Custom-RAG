@@ -7,3 +7,4 @@ pymupdf
 numpy
 python-dotenv
 faiss-cpu
+streamlit
