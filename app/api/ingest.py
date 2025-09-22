@@ -6,7 +6,7 @@ from rag.db import init_schema, enqueue_index_job, create_document
 from typing import List, Optional
 import uuid, hashlib
 
-router = APIRouter(prefix="/ingest", tags=["ingest"])
+ROUTER = APIRouter(prefix="/ingest", tags=["ingest"])
 
 # Keeping it simple for now but there are safer and more dynamic ways to do this
 UPLOAD_DIR = Path("data/uploads")
@@ -22,7 +22,7 @@ class IngestResult(BaseModel):
     status: str
     message: Optional[str] = None
 
-@router.post("/pdf_documents", response_model=List[IngestResult])
+@ROUTER.post("/pdf_documents", response_model=List[IngestResult])
 async def ingest_pdf_documents(files: List[UploadFile] = File(..., description="Single or more PDF files")):
     """
     Accepts one or more PDF files to be used as a source for RAG

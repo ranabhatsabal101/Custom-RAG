@@ -2,10 +2,11 @@ import os, fitz
 from dotenv import load_dotenv, find_dotenv
 
 load_dotenv(find_dotenv(), override=True)
-CHUNK_SIZE=1200
+
+CHUNK_SIZE=400
 OVERLAP = 200
 RETRIES = 5
-EMBED_MODEL = os.getenv("MISTRAL_EMBED_MODEL", "mistral-embed")
+EMBED_MODEL = os.getenv("MISTRAL_EMBED_MODEL", "")
 
 def extract_text_pages(pdf_path: str):
     pages = []

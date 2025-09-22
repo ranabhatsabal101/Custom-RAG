@@ -13,8 +13,10 @@ class JobStatus(Enum):
     FAILED = "FAILED"
     DONE = "DONE"
 
-
+# hard coded for now for simple control but could be taken in using env
 DB_PATH = "data/db.sqlite3"
+
+# could live in a separate file, but left here for now
 SCHEMA = """
 -- Table to store the pdf documents
 CREATE TABLE IF NOT EXISTS documents(
@@ -179,7 +181,6 @@ def get_total_chunks():
         return con.execute("SELECT COUNT(*) FROM chunk_meta").fetchone()[0]
     
 def match_fts_query(fts_query, top_k):
-    print(fts_query)
     with _connect() as con:
         cur = con.execute(
             "SELECT rowid, bm25(chunk_fts) AS s "
@@ -212,7 +213,3 @@ def get_chunk_meta(ids):
                 "text": r[6],
             })
         return res
-
-
-
-

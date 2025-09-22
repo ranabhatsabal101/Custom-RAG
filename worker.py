@@ -9,11 +9,12 @@ from rag.embedders import get_embedder
 from rag.db import (init_schema, get_job, 
                     mark_job_done, mark_job_failed, update_document_status, 
                     get_document, insert_chunks, DocumentStatus)
+from rag.llm_client import get_llm_client
 
 load_dotenv(find_dotenv(), override=True)
 
-EMBED_MODEL = os.getenv("MISTRAL_EMBED_MODEL", "mistral-embed")
-EMBEDDER = get_embedder(model=EMBED_MODEL)
+EMBEDDER = get_embedder()
+LLM_CLIENT = get_llm_client()
 
 def _get_embeddings(texts, ):
     return EMBEDDER.embed(texts)

@@ -2,6 +2,7 @@ from rag.intent_service import get_intent_service
 from rag.embedders import get_embedder
 from rag.indexer import IVFPQ_INDEX_PATH, FLAT_INDEX_PATH
 from rag.db import match_fts_query, get_chunk_meta
+from rag.reranker import build_reranker
 from dotenv import load_dotenv, find_dotenv
 
 import re, faiss
@@ -12,10 +13,6 @@ EMBED_MODEL = get_embedder()
 INTENT_SERVICE = get_intent_service()
 
 _WS_RE = re.compile(r"\s+")
-_SMART_QUOTES = [
-    ("\u201C", '"'), ("\u201D", '"'),  # smart double
-    ("\u2018", "'"), ("\u2019", "'"),  # smart single
-]
 
 class Retriever:
     def __init__(self):
@@ -28,8 +25,6 @@ class Retriever:
         if not query:
             return ""
         
-        for a, b in _SMART_QUOTES:
-            query = query.replace(a, b)
         return re.sub(r"\s+", " ", query.strip())
     
     def _prep_term(self, term):
@@ -102,13 +97,13 @@ class Retriever:
         ids = labels[0]
         scores = distances[0]
 
+        # by default, these scores are between -1 and 1. We change them to be between 0 and 1.
         simple_score = np.clip(scores, -1.0, 1.0)
         simple_score = (simple_score + 1.0) / 2.0
 
         return [(int(i), float(s)) for i,s in zip(ids, simple_score) if i != -1]
     
     def _normalize_bm25_score(self, rows):
-        # Invert the scores so that 
         if not rows:
             return []
         
@@ -116,7 +111,10 @@ class Retriever:
         smin, smax = min(scores), max(scores)
         if abs(smax - smin) < 1e-9:
             return [(int(r[0]), 1.0) for r in rows]
-        inv = [smax - s for s in scores]      # invert so bigger = better
+        
+        # by default, these scores are "smaller the better", we change them to "bigger the better"
+        # so that we can easily merge with semantic similarity
+        inv = [smax - s for s in scores]      
         imin, imax = min(inv), max(inv)
         return [(int(rows[i][0]), (inv[i] - imin) / (imax - imin + 1e-12)) for i in range(len(rows))]
 
@@ -130,18 +128,18 @@ class Retriever:
 
     def _rrf(self, semantic_similarity, keyword_similarity, k):
         #Reciprocal Rank Fusion method
-        rD = {cid: r for r, (cid, _) in enumerate(semantic_similarity, start=1)}
-        rS = {cid: r for r, (cid, _) in enumerate(keyword_similarity, start=1)}
+        rank_semantic = {cid: r for r, (cid, _) in enumerate(semantic_similarity, start=1)}
+        rank_keyword = {cid: r for r, (cid, _) in enumerate(keyword_similarity, start=1)}
 
-        all_ids = set(rD) | set(rS)
+        all_ids = set(rank_semantic) | set(rank_keyword)
 
         fused = {}
         for cid in all_ids:
             s = 0.0
-            if cid in rD:
-                s += 1.0 / (k + rD[cid])
-            if cid in rS:
-                s += 1.0 / (k + rS[cid])
+            if cid in rank_semantic:
+                s += 1.0 / (k + rank_semantic[cid])
+            if cid in rank_keyword:
+                s += 1.0 / (k + rank_keyword[cid])
             fused[cid] = s
         return fused
     
@@ -159,7 +157,7 @@ class Retriever:
         return embeddings, embeddings.shape[1]
 
     
-    def search(self, query, query_meta, top_k = 8, rrf_k = 60):
+    def search(self, query, query_meta, rerank = False, top_k = 8, rrf_k = 60):
         semantic_query = self._normalize(query_meta.get("semantic_query", "") or query)
         keyword_query = self._get_fts_query(
             query_meta.get("keyword_query", "") or query,
@@ -195,8 +193,27 @@ class Retriever:
                 "merged": merged_map.get(cid, 0.0)
             }
 
+        if rerank and matches:
+            reranker = build_reranker()
+            passages = [m["text"] for m in matches]
+            rr = reranker.score(query, passages)
+
+            for r in rr:
+                matches[r.index]["scores"]["rerank"] = r.score
+
+            def _final_score(h):
+                r = h["scores"].get("rerank", 0.0)
+                f = h["scores"].get("fused", 0.0)
+                return 0.85 * r + 0.15 * f
+            matches.sort(key=_final_score, reverse=True)
+
+        matches[:top_k]
         return {
             "index_type": type,
             "query": {"original": query, "semantic": semantic_query, "keyword": keyword_query},
             "results": matches
         }
+    
+
+def get_retriever():
+    return Retriever()

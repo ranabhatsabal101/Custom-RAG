@@ -8,7 +8,6 @@ INDEX_DIR = Path("./data/index")
 INDEX_DIR.mkdir(parents=True, exist_ok=True)
 
 FLAT_INDEX_PATH = INDEX_DIR / "faiss_flat.index"
-
 IVFPQ_INDEX_PATH = INDEX_DIR / "faiss_ivfpq.index"
 MIN_TRAIN_SIZE = 5000
 TRAIN_SIZE_CAP = 100000

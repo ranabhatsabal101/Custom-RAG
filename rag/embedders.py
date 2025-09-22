@@ -3,18 +3,25 @@ from mistralai import Mistral
 
 import numpy as np
 import os
+from dotenv import load_dotenv, find_dotenv
+
+load_dotenv(find_dotenv(), override=True)
+
+EMBED_MODEL = os.getenv("MISTRAL_EMBED_MODEL")
+API_KEY = os.getenv("MISTRAL_API_KEY")
 
 class Embedder(Protocol):
     def embed(self, texts: List[str]) -> np.ndarray: ...
 
 class MistralEmbedder:
-    def __init__(self, model: str | None = None, batch_size: int = 128):
-        api_key = os.getenv("MISTRAL_API_KEY")
-        if not api_key:
+    def __init__(self, batch_size: int = 128):
+        if not EMBED_MODEL:
+            raise RuntimeError("MISTRAL_EMBED_MODEL not set; cannot use Mistral embeddings.")
+        if not API_KEY:
             raise RuntimeError("MISTRAL_API_KEY not set; cannot use Mistral embeddings.")
         
-        self.client = Mistral(api_key=api_key)
-        self.model = model or os.getenv("MISTRAL_EMBED_MODEL", "mistral-embed")
+        self.client = Mistral(api_key=API_KEY)
+        self.model = EMBED_MODEL
         self.batch_size = batch_size
 
     def embed(self, texts) -> np.ndarray:
@@ -32,5 +39,5 @@ class MistralEmbedder:
         return arr
     
 
-def get_embedder(model = None) -> Embedder:
-    return MistralEmbedder(model)
+def get_embedder() -> Embedder:
+    return MistralEmbedder()

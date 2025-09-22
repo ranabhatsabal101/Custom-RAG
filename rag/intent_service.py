@@ -2,15 +2,14 @@ from rag.llm_client import get_llm_client
 from pydantic import BaseModel, ValidationError
 from typing import List
 
-import os, json, re
+import json, re
 
 LLM_CLIENT = get_llm_client()
 
 _SYSTEM = """You are an intent and query-rewriting assistant for a RAG system.
 Decide if the user's message should trigger a knowledge-base search (documents).
-Ensure that a generic question that could be easily answered through web search
-is not supposed to trigger a knowledge-base search.
-If yes, output high-quality rewrites:
+Ensure that small talks do not trigger a knowledge-base search, but specific questions do.
+If the query is supposed to trigger a knowledge-base search, output high-quality rewrites:
 - semantic_query: best semantic form (natural language) for semantic similarity checks
 - keyword_query: FTS-friendly string; OR terms; keep quotes together
 - must_terms: []  (exact terms that must appear; else empty)
@@ -87,11 +86,11 @@ class IntentService:
     def analyze(self, query):
         msgs = [
             {"role": "system", "content": _SYSTEM},
-            {"role": "user", "content": f"User query:\n{query}\nRespond with STRICT JSON only."}
+            {"role": "user", "content": f"User query:\n{query}\nAgain it is imperative that you respond with STRICT JSON only as provided."}
         ]
 
         try:
-            text = self.client.chat_query(msgs, temperature = 0.0, response_format={"type": "json_object"})
+            text = self.client.chat_query(msgs, structured = True, temperature = 0.0, response_format=QueryResponse)
             response = self._parse_query_response_from_completion(text)
             return response.model_dump()
         except Exception as e:
