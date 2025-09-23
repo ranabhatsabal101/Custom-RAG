@@ -60,7 +60,7 @@ def query(request: QueryRequest):
                 refined_query,
                 response,
                 rerank=True,
-                top_k=request.top_k, 
+                top_k=request.top_k,
                 rrf_k=request.rrf_k)
             match = retrieved.get("results", [])
             for i, r in enumerate(match, start=1):

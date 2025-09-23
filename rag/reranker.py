@@ -4,7 +4,7 @@ from typing import Optional, List
 
 LLM_CLIENT = get_llm_client()
 BATCH_SIZE = 16
-MAX_PASSAGE_CHARS = 1000
+MAX_CANDIDATE_CHARS = 1000
 
 class RerankResult(BaseModel):
     index: int
@@ -17,32 +17,32 @@ class RerankResponse(BaseModel):
 
 class _BaseReranker:
     name: str = "base"
-    def score(self, query: str, passages: List[str]) -> List[RerankResult]:
+    def score(self, query: str, candidates: List[str]) -> List[RerankResult]:
         raise NotImplementedError
 
 def _trim(p: str) -> str:
     """Simple char-based truncation to avoid very long inputs."""
     p = p or ""
-    if len(p) <= MAX_PASSAGE_CHARS: 
+    if len(p) <= MAX_CANDIDATE_CHARS: 
         return p
-    return p[:MAX_PASSAGE_CHARS] + "…"
+    return p[:MAX_CANDIDATE_CHARS] + "…"
     
 class LLMReranker(_BaseReranker):
     SYSTEM = (
-        "You are a reranker. Given a user query and a list of passages, "
-        "assign an integer score 0 to 3 to each passage where 3=highly relevant, 1=somewhat relevant, 2=loosely relevant, 0=not relevant at all. "
+        "You are a reranker. Given a user query and a list of candidates, "
+        "assign an integer score 0 to 3 to each candidate where 3=highly relevant, 1=somewhat relevant, 2=loosely relevant, 0=not relevant at all. "
         "Return STRICT JSON as: {\"scores\": [s0, s1, ...], \"reasons\": [\"...\", ...]} only."
     )
 
     def __init__(self):
         self.client = LLM_CLIENT
 
-    def score(self, query: str, passages: List[str]) -> List[RerankResult]:
-        # Batch if many passages to keep context small
+    def score(self, query: str, candidates: List[str]) -> List[RerankResult]:
+        # Batch if many candidates to keep context small
         results: List[RerankResult] = []
-        for start in range(0, len(passages), BATCH_SIZE):
-            batch = passages[start:start+BATCH_SIZE]
-            lines = [f"Query: {query}", "Passages:"]
+        for start in range(0, len(candidates), BATCH_SIZE):
+            batch = candidates[start:start+BATCH_SIZE]
+            lines = [f"Query: {query}", "Candidates:"]
             for i, p in enumerate(batch):
                 lines.append(f"[{i}] {_trim(p)}")
             user = "\n".join(lines)

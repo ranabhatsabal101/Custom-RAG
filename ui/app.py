@@ -6,7 +6,7 @@ load_dotenv(find_dotenv(), override=True)
 _DEBUG = os.getenv("DEBUG", "False")
 
 _API_BASE = "http://localhost:8000"
-_TOP_K = 6
+_TOP_K = 8
 _RRF_K = 60
 
 # Utilities

@@ -133,15 +133,15 @@ class Retriever:
 
         all_ids = set(rank_semantic) | set(rank_keyword)
 
-        fused = {}
+        merged = {}
         for cid in all_ids:
             s = 0.0
             if cid in rank_semantic:
                 s += 1.0 / (k + rank_semantic[cid])
             if cid in rank_keyword:
                 s += 1.0 / (k + rank_keyword[cid])
-            fused[cid] = s
-        return fused
+            merged[cid] = s
+        return merged
     
     def _get_full_chunk_info(self, ids):
         if not ids:
@@ -155,6 +155,11 @@ class Retriever:
     def _embed_query(self, query):
         embeddings = self.embed_model.embed(query)
         return embeddings, embeddings.shape[1]
+    
+    def _final_score(self, h):
+        r = h["scores"].get("rerank", 0.0)
+        f = h["scores"].get("merged", 0.0)
+        return 0.85 * r + 0.15 * f
 
     
     def search(self, query, query_meta, rerank = False, top_k = 8, rrf_k = 60):
@@ -167,8 +172,9 @@ class Retriever:
         embedded_query, dim = self._embed_query(semantic_query)
 
         index, type = self._load_index(dim)
-        semantic_similarity = self._semantic_search(index, embedded_query, top_k) if index is not None else []
-        keyword_similairty = self._keyword_search(keyword_query, top_k)
+        retrieval_top_k = top_k * 2         # Retrieve twice from the index search
+        semantic_similarity = self._semantic_search(index, embedded_query, retrieval_top_k) if index is not None else []
+        keyword_similairty = self._keyword_search(keyword_query, retrieval_top_k)
 
         if not semantic_similarity and not keyword_similairty:
             return {
@@ -201,11 +207,7 @@ class Retriever:
             for r in rr:
                 matches[r.index]["scores"]["rerank"] = r.score
 
-            def _final_score(h):
-                r = h["scores"].get("rerank", 0.0)
-                f = h["scores"].get("fused", 0.0)
-                return 0.85 * r + 0.15 * f
-            matches.sort(key=_final_score, reverse=True)
+            matches.sort(key=self._final_score, reverse=True)
 
         matches[:top_k]
         return {
