@@ -5,17 +5,11 @@ from dotenv import load_dotenv, find_dotenv
 load_dotenv(find_dotenv(), override=True)
 _DEBUG = os.getenv("DEBUG", "False")
 
-st.set_page_config(page_title="PDF Chat", layout="wide")
+_API_BASE = "http://localhost:8000"
+_TOP_K = 6
+_RRF_K = 60
 
-with st.sidebar:
-    st.header("Settings")
-    API_BASE = st.text_input("API base URL", value="http://localhost:8000")
-    TOP_K = st.number_input("Top K (retrieve)", min_value=1, max_value=20, value=6)
-    RRF_K = st.number_input("RRF k (fusion)", min_value=10, max_value=200, value=60)
-    st.caption("Your FastAPI should expose /ingest/pdf_documents and /query")
-
-st.title("PDF Chat")
-st.write("Upload PDFs, then ask questions. The app will ingest and index, then use hybrid + rerank RAG to answer.")
+# Utilities
 
 def _pack_history(max_history = 8):
     if "chat_history" not in st.session_state:
@@ -55,10 +49,11 @@ def _post_query(api_base, query, top_k, rrf_k):
     return response.json()
 
 
-def _render_sources(sources):
+def _render_sources(sources, top_k = 3):
     if not sources:
         return
     st.markdown("**Sources**")
+    sources = sources[:top_k] if len(sources) > top_k else sources
     for s in sources:
         with st.expander(f"[S{s.get('rank')}] {s.get('document_name')} {s.get('page_num')}"):
             st.write(s.get("text", ""))
@@ -74,6 +69,19 @@ def _ensure_history():
     if "chat_history" not in st.session_state:
         st.session_state.chat_history = []
 
+st.set_page_config(page_title="Custom PDF Chat", layout="wide")
+
+if _DEBUG == "True":
+    with st.sidebar:
+        st.header("Settings")
+        API_BASE = st.text_input("API base URL", value=_API_BASE)
+        TOP_K = st.number_input("Top K (retrieve)", min_value=1, max_value=20, value=_TOP_K)
+        RRF_K = st.number_input("RRF k (fusion)", min_value=10, max_value=200, value=_RRF_K)
+        st.caption("The FastAPI should expose /ingest/pdf_documents and /query")
+
+st.title("Custom PDF Chat")
+st.write("Upload PDFs and ask questions! This app will let you ingest any PDF and answer your questions that are based off of the PDFs.")
+
 with st.container(border=True):
     st.subheader("Upload PDFs")
     files = st.file_uploader(
@@ -85,7 +93,7 @@ with st.container(border=True):
     with col1:
         ingest_button = st.button("Ingest", disabled=not files)
     with col2:
-        st.caption("After ingest, your background worker will parse/chunk/emb/index. You can start chatting right away.")
+        st.caption("After ingestion, a background worker will parse/chunk/emb/index. You can start chatting right away but it might take a few seconds for the process to finish.")
 
     if ingest_button and files:
         try:
@@ -120,7 +128,7 @@ if user_query:
     try:
         with st.chat_message("assistant"):
             with st.spinner("Thinking..."):
-                res = _post_query(API_BASE, user_query, TOP_K, RRF_K)
+                res = _post_query(_API_BASE, user_query, _TOP_K, _RRF_K)
             answer = res.get("answer")
             sources = res.get("results", [])
             triggered = res.get("triggered", None)
