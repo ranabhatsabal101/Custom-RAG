@@ -71,12 +71,15 @@ The Custom-RAG system follows a microservices architecture with three main compo
 
 ### UI
 ![alt text](img/ui.png)
+
 The UI is kept fairly simple here with capabilities to upload multiple PDFs at the same time. The user can start asking questions about the PDF in the chat window below after they ingest the PDF. 
 
 ![alt text](img/response.png)
+
 Since the backend responds in a markdown format and the UI is capable of rendering it, it uses proper formatting for different kinds of responses like tables and headers.
 
 ![alt text](img/sources.png)
+
 It also lists the `top_k` sources with the ability to see the actual chunks that it referred to answer the questions, as they are cited in the response. Along with this, the ranking given to these sources are also shown in the footer of each sources.
 
 **Note for development mode**: When the UI is run on `DEBUG` mode, a settings panel is also visible that allows you to change `localhost`, `top_k`, and `rrf_k` values. These were used to tune these parameters during development and are kept to showcase the capabilites of easy testing. 
@@ -89,11 +92,13 @@ The capability to remove documents from the UI would be an easy addition so that
 
 ### Document Ingestion
 ![alt text](img/ingest_pdf_arch.png)
+
 As mentioned in the above sections, document ingestion is handled by one of the endpoints of the API that is exposed by our FastAPI Backend (`/ingest/pdf_documents`). Once the user uploads the documents, the endpoint saves the data to a folder as a backup and stores the text and metadata in a SQLite Database. The service also adds this document to a SQLite based queuing system for a background service to claim this document, chunk it, embed it, and properly index it for vector similarity searches. The full-text-search (fts5) extension is also leveraged within SQLite to perform Best Matching 25 (BM25) matching function for keyword matching along with semantic matching during the retrieval process.
 
 
 ### Document Processing
 ![alt text](img/chunking_arch.png)
+
 An asynchronous background service is employed to do the necessary document processing for the retrieval process. This service queries a queue in SQLite for any `Pending` tasks and does the following:
 
 1. **Text Extraction**: Uses [PyMuPDF](https://github.com/pymupdf/PyMuPDF) to extract text from PDFs
