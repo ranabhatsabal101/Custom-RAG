@@ -102,7 +102,7 @@ As mentioned in the above sections, document ingestion is handled by one of the 
 An asynchronous background service is employed to do the necessary document processing for the retrieval process. This service queries a queue in SQLite for any `Pending` tasks and does the following:
 
 1. **Text Extraction**: Uses [PyMuPDF](https://github.com/pymupdf/PyMuPDF) to extract text from PDFs
-2. **Chunking** (`rag/chunker.py`): Splits text into 400-character chunks with 200-character overlap
+2. **Chunking** (`rag/chunker.py`): Naively splits text into 400-character chunks with 200-character overlap
 3. **Embedding** (`rag/embedder.py`): Generates embeddings using Mistral's embedding model
 4. **Indexing**: Creates both flat and IVFPQ FAISS indices for scalable search
 
@@ -117,7 +117,7 @@ However, this IVFPQ index requires training the clustering and quantizing algori
 
 Again, for the sake of time, a very simple fixed length naive overlapping chunking algorithm is implemented here. A fixed token size of 400 with the overlap of 200 is used with some research finding that these numbers seem to give the best results. Like any other machine learning problem, the way to find the best chunking algorithm is to iteratively test and evaluate to see which performs best for any given situation. Hence, this would be done in case we were to continue with this project.
 
-Something that was considered and might be helpful here is also the idea of "contextual enrichment". We could add additional information in the chunks or as part of a meta data on each chunks to mention their surrounding contexts before embedding these chunks such that the similarity searches can better retrieve them.
+A very quick upgrade to this would be to do a soft token size with complete sentence chunking so that no chunk have incomplete text sentences. Something that would be more advanced and helpful is also the idea of "contextual enrichment". We could add additional information in the chunks or as part of a meta data on each chunks to mention their surrounding contexts before embedding these chunks such that the similarity searches can better retrieve them.
 
 
 ### Query Preprocessing 
@@ -132,7 +132,7 @@ Along with unnderstanding the intent of the query, this client also parses the q
 **Note:** Two different LLM clients were used here instead of one because separating them seemed to perform better. This makes sense theoritically as well since LLMs are proven to perform better at specific tasks rather than multiple tasks.
 
 #### Future Considerations
-Something that was considered and would be a good addition here is a way to understand what documents is available ahead of time and use that to understand the intent of the query. If contextual enrichment is used for chunking, we can use that to crate tags or meta data for each documents and those can be used by the `intent_service` to know ahead of time if a query is about certain documents or not.
+Something that was considered and would be a good addition here is a way to understand what documents is available ahead of time and use that to understand the intent of the query. If contextual enrichment is used for chunking, we can use that to create tags or meta data for each documents and those can be used by the `intent_service` to know ahead of time if a query is about certain documents or not.
 
 ### Retrieval System (`rag/retriever.py`)
 ![alt text](img/retrieval_arch.png)
